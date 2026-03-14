@@ -289,7 +289,7 @@ const Visualizer = () => {
   const fetchData = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch("/api/get-foundation-data");
+      const res = await fetch("http://localhost:8000/api/get-foundation-data");
       const data = await res.json();
       setPoints(data);
     } catch (err) {
@@ -348,7 +348,6 @@ const Visualizer = () => {
     }
   };
 
-  // Summary counts
   const critical = points.filter((p) => parseFloat(p.fs) < 1.2).length;
   const stable = points.length - critical;
 
@@ -373,7 +372,6 @@ const Visualizer = () => {
             height: panelSize.height,
           }}
         >
-          {/* Header */}
           <div style={styles.panelHeader}>
             <div>
               <h3 style={{ margin: 0, fontSize: "14px", color: "#f1f5f9" }}>
@@ -397,13 +395,19 @@ const Visualizer = () => {
             </button>
           </div>
 
-          {/* Scrollable body */}
           <div style={styles.panelBody}>
-            {/* ── Top stats ── */}
             <div style={styles.statsRow}>
               <div style={styles.statBox}>
                 <div style={styles.statLabel}>BUILDING</div>
-                <div style={{ ...styles.statValue, fontSize: "11px" }}>
+                <div
+                  style={{
+                    ...styles.statValue,
+                    fontSize: "11px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {selectedData.buildingType}
                 </div>
               </div>
@@ -429,7 +433,6 @@ const Visualizer = () => {
               </div>
             </div>
 
-            {/* ── Identification ── */}
             <div style={styles.section}>
               <DataRow label="Soil Type" value={selectedData.soilType || "—"} />
               <DataRow label="SPT N-Value" value={selectedData.sptN || "—"} />
@@ -441,7 +444,6 @@ const Visualizer = () => {
 
             <hr style={styles.divider} />
 
-            {/* ── Mohr-Coulomb ── */}
             <div style={styles.section}>
               <SectionLabel text="MOHR-COULOMB" />
               <DataRow
@@ -473,7 +475,6 @@ const Visualizer = () => {
 
             <hr style={styles.divider} />
 
-            {/* ── Terzaghi Bearing Capacity ── */}
             <div style={styles.section}>
               <SectionLabel text="TERZAGHI BEARING CAPACITY" />
               <DataRow
@@ -509,12 +510,10 @@ const Visualizer = () => {
 
             <hr style={styles.divider} />
 
-            {/* ── AI Advice ── */}
             <SectionLabel text="⚙ GEOTECHNICAL ADVICE" />
             <FormatAdvice text={selectedData.ai_advice} />
           </div>
 
-          {/* Resize handle */}
           <div
             onMouseDown={onResizeMouseDown}
             style={styles.resizeHandle}
@@ -579,7 +578,6 @@ const Visualizer = () => {
           </div>
         </div>
 
-        {/* Summary counts */}
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <div style={styles.statBox2}>
             <div style={{ fontSize: 18, fontWeight: "bold", color: "#4dff88" }}>
@@ -607,10 +605,10 @@ const Visualizer = () => {
       </div>
 
       {/* ── 3D Scene ── */}
-      <Canvas shadows>
+      <Canvas shadows style={{ background: "#1a3a5c" }}>
         <PerspectiveCamera makeDefault position={[15, 12, 15]} fov={50} />
         <OrbitControls makeDefault minDistance={5} maxDistance={50} />
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.8} />
         <pointLight position={[10, 15, 10]} intensity={1.5} castShadow />
         <spotLight
           position={[-10, 20, 10]}
@@ -618,6 +616,11 @@ const Visualizer = () => {
           penumbra={1}
           intensity={1}
           castShadow
+        />
+        <directionalLight
+          position={[0, 10, 0]}
+          intensity={0.5}
+          color="#93c5fd"
         />
 
         <Plane
@@ -630,16 +633,66 @@ const Visualizer = () => {
           ]}
           receiveShadow
         >
-          <meshStandardMaterial color="#2d3748" transparent opacity={0.5} />
+          <meshStandardMaterial color="#836539" transparent opacity={0.5} />
         </Plane>
 
+        {/* Infinite ground grid */}
         <Grid
           infiniteGrid
-          fadeDistance={40}
-          cellColor="#4a5568"
-          sectionColor="#2d3748"
-          position={[0, -0.02, 0]}
+          cellSize={1}
+          cellThickness={0.5}
+          cellColor="#1e3a5c"
+          sectionSize={5}
+          sectionThickness={1}
+          sectionColor="#2563eb"
+          fadeDistance={60}
+          fadeStrength={1.5}
+          position={[0, -0.01, 0]}
         />
+
+        {/* Site boundary grid on top — brighter */}
+        <Grid
+          args={[parseFloat(siteArea.length), parseFloat(siteArea.width)]}
+          cellSize={1}
+          cellThickness={1}
+          cellColor="#2563eb"
+          sectionSize={5}
+          sectionThickness={1.5}
+          sectionColor="#60a5fa"
+          fadeDistance={50}
+          fadeStrength={1}
+          followCamera={false}
+          infiniteGrid={false}
+          position={[
+            parseFloat(siteArea.length) / 2,
+            -0.005,
+            parseFloat(siteArea.width) / 2,
+          ]}
+        />
+
+        {/* Vertical Y lines under each block */}
+        {points.map((pt, index) => (
+          <line key={`yline-${index}`}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                array={
+                  new Float32Array([
+                    parseFloat(pt.posX),
+                    0,
+                    parseFloat(pt.posY),
+                    parseFloat(pt.posX),
+                    -parseFloat(pt.depth),
+                    parseFloat(pt.posY),
+                  ])
+                }
+                count={2}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#60a5fa" opacity={0.6} transparent />
+          </line>
+        ))}
 
         {points.map((pt, index) => (
           <FoundationPoint
@@ -677,7 +730,7 @@ const styles = {
   container: {
     width: "100%",
     height: "100vh",
-    background: "#0f172a",
+    background: "#1a3a5c",
     position: "relative",
     overflow: "hidden",
   },
@@ -719,7 +772,7 @@ const styles = {
   panelBody: { flex: 1, overflowY: "auto", padding: "12px 16px 28px" },
   statsRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "0.7fr 1fr 1fr",
     gap: "8px",
     marginBottom: "12px",
   },
