@@ -57,7 +57,7 @@ const Visualizer = () => {
   const fetchData = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch('http://localhost:8000/api/get-foundation-data');
+      const res = await fetch('/api/get-foundation-data');
       const data = await res.json();
       setPoints(data);
     } catch (err) {
