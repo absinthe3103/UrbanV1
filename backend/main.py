@@ -62,7 +62,7 @@ def get_ai_advice(entry: FoundationData):
             {"role": "system", "content": "You are a geotechnical expert. Pls tell me what should i do to increase the stability of the foundation."},
             {"role": "user", "content": prompt}
         ],
-        "max_completion_tokens": 508,
+        "max_completion_tokens": 2000,
         "temperature": 0.1,
         "top_p": 0.9
     }
