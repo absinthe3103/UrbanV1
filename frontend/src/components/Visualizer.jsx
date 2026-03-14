@@ -28,9 +28,7 @@ const renderBold = (text) => {
 const FormatAdvice = ({ text }) => {
   if (!text) return <p style={{ color: "#475569" }}>No AI advice available.</p>;
 
-  // ── Convert LaTeX to readable plain text ──
   const cleanText = text
-    // Block math \[ ... \] → keep content, strip delimiters
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) =>
       inner
         .trim()
@@ -45,7 +43,6 @@ const FormatAdvice = ({ text }) => {
         .replace(/\\[a-zA-Z]+/g, "")
         .trim(),
     )
-    // Inline math \( ... \) → keep content, strip delimiters
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) =>
       inner
         .trim()
@@ -60,16 +57,11 @@ const FormatAdvice = ({ text }) => {
         .replace(/\\[a-zA-Z]+/g, "")
         .trim(),
     )
-    // \boxed{ ... } → just show content, no brackets
     .replace(/\\boxed\{([\s\S]*?)\}/g, (_, inner) => inner.trim())
-    // \text{x} → x
     .replace(/\\text\{(.*?)\}/g, "$1")
-    // remaining \commands
     .replace(/\\[a-zA-Z]+/g, "")
-    // remove ALL stray { } braces anywhere
     .replace(/\{/g, "")
     .replace(/\}/g, "")
-    // collapse blank lines
     .replace(/\n{3,}/g, "\n\n");
 
   const lines = cleanText.split("\n");
@@ -78,22 +70,17 @@ const FormatAdvice = ({ text }) => {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
     if (line.trim() === "") {
       elements.push(<div key={key++} style={{ height: "4px" }} />);
       continue;
     }
-
     if (line.trim() === "---") {
       elements.push(
         <hr key={key++} style={{ borderColor: "#1e293b", margin: "8px 0" }} />,
       );
       continue;
     }
-
-    // ### Heading
     if (line.startsWith("### ")) {
-      const title = line.replace(/^###\s*/, "").replace(/\*\*/g, "");
       elements.push(
         <p
           key={key++}
@@ -106,15 +93,12 @@ const FormatAdvice = ({ text }) => {
             letterSpacing: "0.5px",
           }}
         >
-          {title}
+          {line.replace(/^###\s*/, "").replace(/\*\*/g, "")}
         </p>,
       );
       continue;
     }
-
-    // #### Sub-heading or A. B. C. style
     if (line.startsWith("#### ") || line.match(/^[A-Z]\.\s+[A-Z]/)) {
-      const title = line.replace(/^####\s*/, "").replace(/\*\*/g, "");
       elements.push(
         <p
           key={key++}
@@ -126,13 +110,11 @@ const FormatAdvice = ({ text }) => {
             marginBottom: "3px",
           }}
         >
-          {title}
+          {line.replace(/^####\s*/, "").replace(/\*\*/g, "")}
         </p>,
       );
       continue;
     }
-
-    // Numbered list
     if (line.match(/^\d+\.\s/)) {
       const num = line.match(/^(\d+)\./)[1];
       const content = line.replace(/^\d+\.\s/, "");
@@ -166,8 +148,6 @@ const FormatAdvice = ({ text }) => {
       );
       continue;
     }
-
-    // Bullet point
     if (line.match(/^\s*[-•*]\s/)) {
       const content = line.replace(/^\s*[-•*]\s/, "");
       const indent = line.match(/^(\s+)/);
@@ -200,8 +180,6 @@ const FormatAdvice = ({ text }) => {
       );
       continue;
     }
-
-    // Regular text
     elements.push(
       <p
         key={key++}
@@ -216,9 +194,46 @@ const FormatAdvice = ({ text }) => {
       </p>,
     );
   }
-
   return <div>{elements}</div>;
 };
+
+// ── Data Row helper ───────────────────────────────────────────────────────────
+const DataRow = ({ label, value, valueColor }) => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: "12px",
+      marginBottom: "4px",
+      color: "#e2e8f0",
+    }}
+  >
+    <span style={{ color: "#94a3b8", fontSize: "11px" }}>{label}</span>
+    <span
+      style={{
+        color: valueColor || "#e2e8f0",
+        fontWeight: valueColor ? "bold" : "normal",
+      }}
+    >
+      {value}
+    </span>
+  </div>
+);
+
+const SectionLabel = ({ text }) => (
+  <div
+    style={{
+      fontSize: "10px",
+      color: "#94a3b8",
+      letterSpacing: "1px",
+      marginBottom: "6px",
+      marginTop: "4px",
+      fontWeight: "bold",
+    }}
+  >
+    {text}
+  </div>
+);
 
 // ── 3D Block ──────────────────────────────────────────────────────────────────
 const FoundationPoint = ({ data, isSelected, onClick }) => {
@@ -267,7 +282,7 @@ const Visualizer = () => {
   const [siteArea, setSiteArea] = useState({ length: 20, width: 20 });
   const [selectedData, setSelectedData] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [panelSize, setPanelSize] = useState({ width: 400, height: 520 });
+  const [panelSize, setPanelSize] = useState({ width: 400, height: 560 });
   const isResizing = useRef(false);
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
 
@@ -299,16 +314,15 @@ const Visualizer = () => {
       w: panelSize.width,
       h: panelSize.height,
     };
-
     const onMove = (e) => {
       if (!isResizing.current) return;
       setPanelSize({
         width: Math.max(
-          320,
+          340,
           resizeStart.current.w + (e.clientX - resizeStart.current.x),
         ),
         height: Math.max(
-          220,
+          240,
           resizeStart.current.h + (e.clientY - resizeStart.current.y),
         ),
       });
@@ -334,15 +348,23 @@ const Visualizer = () => {
     }
   };
 
+  // Summary counts
+  const critical = points.filter((p) => parseFloat(p.fs) < 1.2).length;
+  const stable = points.length - critical;
+
   const fsColor = selectedData
     ? parseFloat(selectedData.fs) < 1.2
       ? "#ef4444"
       : "#22c55e"
     : "#22c55e";
 
+  const safeBC = selectedData ? parseFloat(selectedData.allowable_bc || 0) : 0;
+  const applied = selectedData ? parseFloat(selectedData.appliedLoad || 0) : 0;
+  const bcSafe = applied === 0 || safeBC >= applied;
+
   return (
     <div style={styles.container}>
-      {/* ── AI Panel ── */}
+      {/* ── AI + Data Panel ── */}
       {selectedData && (
         <div
           style={{
@@ -351,6 +373,7 @@ const Visualizer = () => {
             height: panelSize.height,
           }}
         >
+          {/* Header */}
           <div style={styles.panelHeader}>
             <div>
               <h3 style={{ margin: 0, fontSize: "14px", color: "#f1f5f9" }}>
@@ -374,47 +397,124 @@ const Visualizer = () => {
             </button>
           </div>
 
-          <div style={styles.statsRow}>
-            <div style={styles.statBox}>
-              <div style={styles.statLabel}>BUILDING</div>
-              <div style={{ ...styles.statValue, fontSize: "11px" }}>
-                {selectedData.buildingType}
+          {/* Scrollable body */}
+          <div style={styles.panelBody}>
+            {/* ── Top stats ── */}
+            <div style={styles.statsRow}>
+              <div style={styles.statBox}>
+                <div style={styles.statLabel}>BUILDING</div>
+                <div style={{ ...styles.statValue, fontSize: "11px" }}>
+                  {selectedData.buildingType}
+                </div>
+              </div>
+              <div style={styles.statBox}>
+                <div style={styles.statLabel}>FACTOR OF SAFETY</div>
+                <div
+                  style={{
+                    ...styles.statValue,
+                    color: fsColor,
+                    fontSize: "20px",
+                  }}
+                >
+                  {selectedData.fs}
+                </div>
+              </div>
+              <div style={styles.statBox}>
+                <div style={styles.statLabel}>STATUS</div>
+                <div style={{ ...styles.statValue, color: fsColor }}>
+                  {parseFloat(selectedData.fs) < 1.2
+                    ? "🔴 Critical"
+                    : "🟢 Stable"}
+                </div>
               </div>
             </div>
-            <div style={styles.statBox}>
-              <div style={styles.statLabel}>FACTOR OF SAFETY</div>
-              <div
-                style={{
-                  ...styles.statValue,
-                  color: fsColor,
-                  fontSize: "20px",
-                }}
-              >
-                {selectedData.fs}
-              </div>
+
+            {/* ── Identification ── */}
+            <div style={styles.section}>
+              <DataRow label="Soil Type" value={selectedData.soilType || "—"} />
+              <DataRow label="SPT N-Value" value={selectedData.sptN || "—"} />
+              <DataRow
+                label="Coords"
+                value={`X:${selectedData.posX}  Y:${selectedData.posY}  Z:${selectedData.depth}`}
+              />
             </div>
-            <div style={styles.statBox}>
-              <div style={styles.statLabel}>STATUS</div>
-              <div style={{ ...styles.statValue, color: fsColor }}>
-                {parseFloat(selectedData.fs) < 1.2
-                  ? "🔴 Critical"
-                  : "🟢 Stable"}
-              </div>
+
+            <hr style={styles.divider} />
+
+            {/* ── Mohr-Coulomb ── */}
+            <div style={styles.section}>
+              <SectionLabel text="MOHR-COULOMB" />
+              <DataRow
+                label="Factor of Safety"
+                value={selectedData.fs}
+                valueColor={fsColor}
+              />
+              <DataRow
+                label="Cohesion c'"
+                value={`${selectedData.cohesion} kPa`}
+              />
+              <DataRow
+                label="Friction φ'"
+                value={`${selectedData.frictionAngle}°`}
+              />
+              <DataRow
+                label="Pore Pressure"
+                value={`${selectedData.porePressure} kPa`}
+              />
+              <DataRow
+                label="Normal Stress"
+                value={`${selectedData.normalStress} kPa`}
+              />
+              <DataRow
+                label="Shear Stress"
+                value={`${selectedData.shearStress} kPa`}
+              />
             </div>
-          </div>
 
-          <div style={styles.coordRow}>
-            📍 X: {selectedData.posX} &nbsp;|&nbsp; Y: {selectedData.posY}{" "}
-            &nbsp;|&nbsp; Depth: {selectedData.depth}m
-          </div>
+            <hr style={styles.divider} />
 
-          <hr style={{ borderColor: "#1e293b", margin: "0 16px 8px" }} />
+            {/* ── Terzaghi Bearing Capacity ── */}
+            <div style={styles.section}>
+              <SectionLabel text="TERZAGHI BEARING CAPACITY" />
+              <DataRow
+                label="Ultimate qu"
+                value={`${selectedData.ultimate_bc || "—"} kN/m²`}
+                valueColor="#60a5fa"
+              />
+              <DataRow
+                label="Allowable qa"
+                value={`${selectedData.allowable_bc || "—"} kN/m²`}
+                valueColor={bcSafe ? "#22c55e" : "#f59e0b"}
+              />
+              {applied > 0 && (
+                <DataRow
+                  label="Applied Load"
+                  value={`${applied} kN/m²  ${bcSafe ? "✓ Safe" : "⚠ Exceeds qa"}`}
+                  valueColor={bcSafe ? "#22c55e" : "#f59e0b"}
+                />
+              )}
+              <DataRow
+                label="Foundation"
+                value={`B=${selectedData.foundationWidth || "—"}m  Df=${selectedData.foundationDepth || "—"}m`}
+              />
+              <DataRow
+                label="Groundwater"
+                value={`${selectedData.groundwaterDepth || "—"}m`}
+              />
+              <DataRow
+                label="Unit Weight"
+                value={`${selectedData.unitWeight || "—"} kN/m³`}
+              />
+            </div>
 
-          <div style={styles.adviceContainer}>
-            <div style={styles.adviceLabel}>⚙ GEOTECHNICAL ADVICE</div>
+            <hr style={styles.divider} />
+
+            {/* ── AI Advice ── */}
+            <SectionLabel text="⚙ GEOTECHNICAL ADVICE" />
             <FormatAdvice text={selectedData.ai_advice} />
           </div>
 
+          {/* Resize handle */}
           <div
             onMouseDown={onResizeMouseDown}
             style={styles.resizeHandle}
@@ -439,17 +539,22 @@ const Visualizer = () => {
             marginBottom: "10px",
           }}
         >
-          <h4 style={{ margin: 0, fontSize: "14px" }}>Site Boundary</h4>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: isSyncing ? "#4dff88" : "#718096",
-            }}
-          />
+          <h4 style={{ margin: 0, fontSize: "13px" }}>Site Boundary</h4>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: isSyncing ? "#4dff88" : "#718096",
+              }}
+            />
+            <span style={{ fontSize: "10px", color: "#94a3b8" }}>
+              {isSyncing ? "Syncing..." : "Idle"}
+            </span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", marginBottom: 12 }}>
           <div>
             <label style={styles.miniLabel}>Length (X)</label>
             <input
@@ -473,8 +578,31 @@ const Visualizer = () => {
             />
           </div>
         </div>
+
+        {/* Summary counts */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div style={styles.statBox2}>
+            <div style={{ fontSize: 18, fontWeight: "bold", color: "#4dff88" }}>
+              {stable}
+            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8" }}>Stable</div>
+          </div>
+          <div style={styles.statBox2}>
+            <div style={{ fontSize: 18, fontWeight: "bold", color: "#ff4d4d" }}>
+              {critical}
+            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8" }}>Critical</div>
+          </div>
+          <div style={styles.statBox2}>
+            <div style={{ fontSize: 18, fontWeight: "bold", color: "#60a5fa" }}>
+              {points.length}
+            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8" }}>Total</div>
+          </div>
+        </div>
+
         <button onClick={fetchData} style={styles.syncBtn}>
-          Refresh Data
+          ↺ Refresh Data
         </button>
       </div>
 
@@ -530,7 +658,7 @@ const Visualizer = () => {
       {/* ── Legend ── */}
       <div style={styles.legend}>
         <div style={styles.legendRow}>
-          <div style={{ ...styles.dot, background: "#4dff88" }} /> Safe (FS &gt;
+          <div style={{ ...styles.dot, background: "#4dff88" }} /> Safe (FS ≥
           1.2)
         </div>
         <div style={styles.legendRow}>
@@ -566,8 +694,8 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    minWidth: "320px",
-    minHeight: "220px",
+    minWidth: "340px",
+    minHeight: "240px",
   },
   panelHeader: {
     display: "flex",
@@ -588,12 +716,12 @@ const styles = {
     cursor: "pointer",
     fontSize: "11px",
   },
+  panelBody: { flex: 1, overflowY: "auto", padding: "12px 16px 28px" },
   statsRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
     gap: "8px",
-    padding: "12px 16px",
-    flexShrink: 0,
+    marginBottom: "12px",
   },
   statBox: {
     background: "#0f172a",
@@ -602,6 +730,14 @@ const styles = {
     textAlign: "center",
     border: "1px solid #1e293b",
   },
+  statBox2: {
+    flex: 1,
+    background: "rgba(0,0,0,0.3)",
+    borderRadius: "6px",
+    padding: "8px 4px",
+    textAlign: "center",
+    border: "1px solid #334155",
+  },
   statLabel: {
     fontSize: "8px",
     color: "#475569",
@@ -609,21 +745,8 @@ const styles = {
     marginBottom: "4px",
   },
   statValue: { fontSize: "13px", fontWeight: "bold", color: "#f1f5f9" },
-  coordRow: {
-    fontSize: "10px",
-    color: "#475569",
-    textAlign: "center",
-    paddingBottom: "8px",
-    flexShrink: 0,
-  },
-  adviceContainer: { flex: 1, overflowY: "auto", padding: "8px 16px 28px" },
-  adviceLabel: {
-    fontSize: "9px",
-    color: "#475569",
-    letterSpacing: "1.5px",
-    fontWeight: "bold",
-    marginBottom: "10px",
-  },
+  section: { marginBottom: "8px" },
+  divider: { borderColor: "#1e293b", margin: "10px 0" },
   resizeHandle: {
     position: "absolute",
     bottom: "0px",
@@ -668,6 +791,7 @@ const styles = {
     borderRadius: "10px",
     color: "white",
     border: "1px solid #4a5568",
+    minWidth: 180,
   },
   miniLabel: {
     display: "block",
@@ -676,7 +800,7 @@ const styles = {
     marginBottom: "4px",
   },
   miniInput: {
-    width: "85px",
+    width: "80px",
     background: "#0f172a",
     border: "1px solid #4a5568",
     color: "white",
@@ -686,7 +810,6 @@ const styles = {
   },
   syncBtn: {
     width: "100%",
-    marginTop: "12px",
     padding: "8px",
     background: "#3b82f6",
     border: "none",
@@ -694,10 +817,11 @@ const styles = {
     borderRadius: "5px",
     cursor: "pointer",
     fontWeight: "bold",
+    fontSize: "13px",
   },
   legend: {
     position: "absolute",
-    bottom: "20px",
+    bottom: "60px",
     left: "20px",
     padding: "12px",
     background: "rgba(15, 23, 42, 0.7)",
