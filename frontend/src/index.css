@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* index.css */
+@import "tailwindcss";
 
 html, body, #root {
   margin: 0;
